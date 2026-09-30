@@ -82,4 +82,40 @@ describe('TemporalAnalyzer', () => {
     const state = analyzer.update(createMockFeatures({ timestamp: 2000 }));
     expect(state.eyesClosedDurationMs).toBe(0);
   });
+
+  it('does not reset looking-away tracking because of one noisy centered frame', () => {
+    // Fill the rolling window with a sustained left look.
+    for (let t = 0; t <= 900; t += 100) {
+      analyzer.update(createLookingFeatures(t, 'left'));
+    }
+
+    const beforeNoise = analyzer.update(createLookingFeatures(1000, 'left'));
+    expect(beforeNoise.wasLookingAway).toBe(true);
+
+    // One centered frame should not immediately exit the hysteresis state.
+    const noisy = analyzer.update(createMockFeatures({ timestamp: 1100 }));
+    expect(noisy.wasLookingAway).toBe(true);
+
+    const resumed = analyzer.update(createLookingFeatures(1200, 'left'));
+    expect(resumed.wasLookingAway).toBe(true);
+    expect(resumed.lookingAwayDurationMs).toBeGreaterThan(0);
+  });
+
+  it('requires stable face reacquisition before clearing absence', () => {
+    analyzer = new TemporalAnalyzer(resolveConfig({ faceReacquisitionMs: 700 }));
+
+    analyzer.update(createAbsentFeatures(0));
+    analyzer.update(createAbsentFeatures(1500));
+
+    const firstFace = analyzer.update(createMockFeatures({ timestamp: 1600 }));
+    expect(firstFace.wasAbsent).toBe(true);
+    expect(firstFace.faceReacquiring).toBe(true);
+
+    const tooSoon = analyzer.update(createMockFeatures({ timestamp: 2100 }));
+    expect(tooSoon.wasAbsent).toBe(true);
+
+    const stable = analyzer.update(createMockFeatures({ timestamp: 2400 }));
+    expect(stable.wasAbsent).toBe(false);
+    expect(stable.faceReacquiring).toBe(false);
+  });
 });
