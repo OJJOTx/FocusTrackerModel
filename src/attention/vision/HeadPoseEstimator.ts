@@ -34,6 +34,7 @@ export class HeadPoseEstimator {
   private readonly yawEMA: ExponentialMovingAverage;
   private readonly pitchEMA: ExponentialMovingAverage;
   private readonly rollEMA: ExponentialMovingAverage;
+  private neutralPose: { yaw: number; pitch: number; roll: number } | null = null;
 
   constructor(_config: ResolvedAttentionConfig) {
     // Moderate smoothing for head pose
@@ -76,9 +77,14 @@ export class HeadPoseEstimator {
     const pose = solvePnP(imagePoints, FACE_3D_MODEL, focalLength, center);
 
     // Apply EMA smoothing to reduce jitter
-    const smoothedYaw = this.yawEMA.update(pose.yaw);
-    const smoothedPitch = this.pitchEMA.update(pose.pitch);
-    const smoothedRoll = this.rollEMA.update(pose.roll);
+    const rawYaw = this.yawEMA.update(pose.yaw);
+    const rawPitch = this.pitchEMA.update(pose.pitch);
+    const rawRoll = this.rollEMA.update(pose.roll);
+
+    // Express pose relative to the user's calibrated screen-facing baseline.
+    const smoothedYaw = rawYaw - (this.neutralPose?.yaw ?? 0);
+    const smoothedPitch = rawPitch - (this.neutralPose?.pitch ?? 0);
+    const smoothedRoll = rawRoll - (this.neutralPose?.roll ?? 0);
 
     // Confidence: higher when face is more frontal (less extreme angles)
     const maxAngle = Math.max(Math.abs(smoothedYaw), Math.abs(smoothedPitch));
@@ -90,6 +96,14 @@ export class HeadPoseEstimator {
       roll: smoothedRoll,
       confidence,
     };
+  }
+
+  /** Set a calibrated neutral screen-facing pose. */
+  setNeutralPose(pose: { yaw: number; pitch: number; roll: number } | null): void {
+    this.neutralPose = pose ? { ...pose } : null;
+    this.yawEMA.reset();
+    this.pitchEMA.reset();
+    this.rollEMA.reset();
   }
 
   /**
