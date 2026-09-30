@@ -9,7 +9,7 @@
  * Each step records iris ratios for ~2 seconds.
  */
 
-import { CalibrationData, GazeFeatures } from '../types/AttentionFeatures';
+import { CalibrationData, GazeFeatures, HeadPoseFeatures } from '../types/AttentionFeatures';
 
 /** Calibration step name */
 export type CalibrationStep = 'center' | 'left' | 'right' | 'up' | 'down';
@@ -32,7 +32,7 @@ const SAMPLES_PER_STEP = 30;
 export class CalibrationManager {
   private calibrationData: CalibrationData;
   private currentStepIndex = -1;
-  private samples: { horizontal: number; vertical: number }[] = [];
+  private samples: { horizontal: number; vertical: number; headPose?: { yaw: number; pitch: number; roll: number } }[] = [];
   private isCalibrating = false;
 
   /** Callback for calibration progress */
@@ -76,7 +76,7 @@ export class CalibrationManager {
    * Feed a gaze sample during calibration.
    * Returns true when the current step is complete.
    */
-  addSample(gazeFeatures: GazeFeatures): boolean {
+  addSample(gazeFeatures: GazeFeatures, headPose?: HeadPoseFeatures | null): boolean {
     if (!this.isCalibrating || this.currentStepIndex < 0) return false;
 
     // Only accept samples with reasonable confidence
@@ -85,6 +85,9 @@ export class CalibrationManager {
     this.samples.push({
       horizontal: gazeFeatures.horizontalRatio,
       vertical: gazeFeatures.verticalRatio,
+      headPose: headPose
+        ? { yaw: headPose.yaw, pitch: headPose.pitch, roll: headPose.roll }
+        : undefined,
     });
 
     // Report progress
@@ -164,6 +167,17 @@ export class CalibrationManager {
       horizontal: avgHorizontal,
       vertical: avgVertical,
     };
+
+    if (step === 'center') {
+      const poseSamples = this.samples.filter((s) => s.headPose);
+      if (poseSamples.length > 0) {
+        this.calibrationData.headPoseCenter = {
+          yaw: poseSamples.reduce((sum, s) => sum + (s.headPose?.yaw ?? 0), 0) / poseSamples.length,
+          pitch: poseSamples.reduce((sum, s) => sum + (s.headPose?.pitch ?? 0), 0) / poseSamples.length,
+          roll: poseSamples.reduce((sum, s) => sum + (s.headPose?.roll ?? 0), 0) / poseSamples.length,
+        };
+      }
+    }
   }
 
   private finishCalibration(): void {
@@ -181,6 +195,7 @@ export class CalibrationManager {
       right: null,
       up: null,
       down: null,
+      headPoseCenter: null,
       isCalibrated: false,
       calibratedAt: null,
     };
