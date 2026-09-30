@@ -161,6 +161,15 @@ async function init() {
     monitor.on('update', (result: AttentionResult) => {
       latestResult = result;
 
+      window.focusOverlay.publishState({
+        state: result.state,
+        attentionScore: result.attentionScore,
+        facePresent: result.facePresent,
+        lookingAwayMs: result.timing.lookingAwayMs,
+        absentMs: result.timing.absentMs,
+        eyesClosedMs: result.eyes.closedDurationMs,
+      });
+
       if (!isCalibrating) {
         updateStateDisplay(result.state);
       }
