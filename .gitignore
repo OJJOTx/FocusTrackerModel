@@ -3,3 +3,5 @@ dist/
 models/*.task
 *.log
 .DS_Store
+
+demo/renderer.bundle.js

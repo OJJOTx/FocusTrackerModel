@@ -6,7 +6,7 @@
   "types": "dist/attention/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:demo": "tsc -p tsconfig.json",
+    "build:demo": "tsc -p tsconfig.json && esbuild demo/renderer.ts --bundle --outfile=demo/renderer.bundle.js --platform=browser --format=esm --external:@mediapipe/tasks-vision",
     "dev": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:watch": "vitest watch",
@@ -15,7 +15,7 @@
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "download-models": "ts-node scripts/download-models.ts",
-    "demo": "electron demo/main.js",
+    "demo": "npm run build:demo && electron dist/demo/main.js",
     "clean": "rimraf dist",
     "prepublishOnly": "npm run build"
   },
@@ -37,6 +37,7 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "electron": "^30.5.1",
+    "esbuild": "^0.28.2",
     "eslint": "^8.57.1",
     "prettier": "^3.4.2",
     "rimraf": "^5.0.10",

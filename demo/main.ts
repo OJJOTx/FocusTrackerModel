@@ -12,7 +12,8 @@ function createWindow() {
     },
   });
 
-  win.loadFile(path.join(__dirname, 'index.html'));
+  // When compiled, this runs from dist/demo/main.js, so we point back to the source demo folder for the HTML
+  win.loadFile(path.join(__dirname, '../../demo/index.html'));
 }
 
 app.whenReady().then(createWindow);
