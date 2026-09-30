@@ -209,13 +209,17 @@ export class AttentionMonitor {
         this.emit('calibration', { step, progress, instruction });
 
         if (step === 'complete') {
-          // Apply calibration data to gaze estimator
-          this.gazeEstimator.applyCalibration(this.calibrationManager.getCalibrationData());
+          // Apply gaze calibration and neutral head-pose baseline.
+          const calibration = this.calibrationManager.getCalibrationData();
+          this.gazeEstimator.applyCalibration(calibration);
+          this.headPoseEstimator.setNeutralPose(calibration.headPoseCenter ?? null);
           this.calibrationManager.onProgress = null;
           resolve();
         }
       };
 
+      this.gazeEstimator.clearCalibration();
+      this.headPoseEstimator.setNeutralPose(null);
       this.calibrationManager.startCalibration();
     });
   }
@@ -266,6 +270,7 @@ export class AttentionMonitor {
   loadCalibration(data: Parameters<CalibrationManager['loadCalibration']>[0]): void {
     this.calibrationManager.loadCalibration(data);
     this.gazeEstimator.applyCalibration(data);
+    this.headPoseEstimator.setNeutralPose(data.headPoseCenter ?? null);
   }
 
   /**
@@ -341,15 +346,23 @@ export class AttentionMonitor {
   private handleResult(result: AttentionResult): void {
     // Feed to calibration if in progress
     if (this.calibrationManager.isInProgress() && result.gaze) {
-      const stepComplete = this.calibrationManager.addSample({
-        horizontalRatioLeft: 0,
-        horizontalRatioRight: 0,
-        verticalRatioLeft: 0,
-        verticalRatioRight: 0,
-        horizontalRatio: (result.gaze.horizontal / 2) + 0.5, // Convert back from [-1,1] to [0,1]
-        verticalRatio: (result.gaze.vertical / 2) + 0.5,
-        confidence: result.gaze.confidence / 100,
-      });
+      const stepComplete = this.calibrationManager.addSample(
+        {
+          horizontalRatioLeft: result.debug?.rawIrisHorizontalLeft ?? 0,
+          horizontalRatioRight: result.debug?.rawIrisHorizontalRight ?? 0,
+          verticalRatioLeft: result.debug?.rawIrisVerticalLeft ?? 0,
+          verticalRatioRight: result.debug?.rawIrisVerticalRight ?? 0,
+          horizontalRatio: (result.gaze.horizontal / 2) + 0.5,
+          verticalRatio: (result.gaze.vertical / 2) + 0.5,
+          confidence: result.gaze.confidence / 100,
+        },
+        {
+          yaw: result.headPose.yaw,
+          pitch: result.headPose.pitch,
+          roll: result.headPose.roll,
+          confidence: result.confidence / 100,
+        },
+      );
       if (stepComplete) {
         this.calibrationManager.nextStep();
       }
