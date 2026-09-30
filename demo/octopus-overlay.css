@@ -89,9 +89,11 @@ body[data-state="uncertain"] {
   transform:
     translate(-50%, -50%)
     translate(var(--edge-shift-x), var(--edge-shift-y));
+  opacity: 1;
   transition:
-    transform 160ms ease,
-    filter 180ms ease;
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    filter 320ms ease,
+    opacity 180ms ease;
   filter: drop-shadow(0 8px 10px rgba(0, 0, 0, 0.28));
 }
 
@@ -103,7 +105,10 @@ body[data-state="uncertain"] {
   height: 68px;
   border-radius: 50% 50% 44% 44%;
   background: var(--octopus-color);
-  transition: background-color 220ms ease, transform 180ms ease;
+  transition:
+    background-color 360ms ease,
+    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-radius 280ms ease;
 }
 
 .head::after {
@@ -124,7 +129,11 @@ body[data-state="uncertain"] {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.96);
   overflow: hidden;
-  transition: height 140ms ease, top 140ms ease;
+  transition:
+    height 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 260ms ease,
+    transform 260ms ease;
 }
 
 .eye-left {
@@ -144,7 +153,10 @@ body[data-state="uncertain"] {
   border-radius: 50%;
   background: var(--face-color);
   transform: translate(-50%, -50%);
-  transition: transform 160ms ease;
+  opacity: 1;
+  transition:
+    transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 180ms ease;
 }
 
 .mouth {
@@ -156,7 +168,13 @@ body[data-state="uncertain"] {
   transform: translateX(-50%);
   border-bottom: 3px solid var(--face-color);
   border-radius: 0 0 18px 18px;
-  transition: all 160ms ease;
+  transition:
+    width 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    height 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    top 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    border-width 220ms ease,
+    border-radius 280ms ease,
+    opacity 180ms ease;
 }
 
 .brow {
@@ -167,7 +185,9 @@ body[data-state="uncertain"] {
   border-radius: 4px;
   background: var(--face-color);
   opacity: 0;
-  transition: opacity 160ms ease, transform 160ms ease;
+  transition:
+    opacity 240ms ease,
+    transform 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .brow-left {
@@ -212,7 +232,9 @@ body[data-state="uncertain"] {
   border-radius: 0 0 16px 16px;
   background: var(--octopus-color);
   transform-origin: 50% 0;
-  transition: background-color 220ms ease, transform 200ms ease;
+  transition:
+    background-color 360ms ease,
+    transform 320ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .t1 { left: 3px; transform: rotate(20deg); }
@@ -305,7 +327,8 @@ body[data-mood="sleepy"] .eye {
 }
 
 body[data-mood="sleepy"] .pupil {
-  display: none;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.35);
 }
 
 body[data-mood="sleepy"] .mouth {
@@ -380,5 +403,33 @@ body[data-state="looking_down"] .pupil {
       translate(-50%, -50%)
       translate(var(--edge-shift-x), var(--edge-shift-y))
       rotate(3deg);
+  }
+}
+
+
+/* Two-phase expression morph used by octopus-overlay.ts. */
+body[data-transitioning="true"] .octopus {
+  opacity: 0.82;
+  filter:
+    drop-shadow(0 6px 8px rgba(0, 0, 0, 0.22))
+    saturate(0.92);
+}
+
+body[data-transitioning="true"] .eye,
+body[data-transitioning="true"] .mouth,
+body[data-transitioning="true"] .brow {
+  opacity: 0.72;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .octopus,
+  .head,
+  .eye,
+  .pupil,
+  .mouth,
+  .brow,
+  .tentacle {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
   }
 }
