@@ -44,8 +44,10 @@ function createLandmarksWithGaze(hRatio: number, vRatio: number): FaceLandmark[]
   landmarks[FACE_LANDMARKS.rightEyeUpper] = { x: 0.6, y: rightUpperY, z: 0 };
   landmarks[FACE_LANDMARKS.rightEyeLower] = { x: 0.6, y: rightLowerY, z: 0 };
 
-  // Right iris at specified ratio
-  const rightIrisX = rightInnerX + (rightOuterX - rightInnerX) * hRatio;
+  // Right eye's inner->outer axis is opposite in image space.
+  // Use the complementary raw ratio so both eyes represent the same physical gaze.
+  const rightRawRatio = 1 - hRatio;
+  const rightIrisX = rightInnerX + (rightOuterX - rightInnerX) * rightRawRatio;
   const rightIrisY = rightUpperY + (rightLowerY - rightUpperY) * vRatio;
   landmarks[FACE_LANDMARKS.rightIrisCenter] = { x: rightIrisX, y: rightIrisY, z: 0 };
 
@@ -68,14 +70,14 @@ describe('GazeEstimator', () => {
     expect(result.confidence).toBeGreaterThan(0);
   });
 
-  it('returns high ratio when iris is toward outer corner (looking left)', () => {
+  it('returns high canonical ratio for physical gaze left', () => {
     const landmarks = createLandmarksWithGaze(0.8, 0.5);
     const result = estimator.estimate(landmarks);
 
     expect(result.horizontalRatio).toBeGreaterThan(0.6);
   });
 
-  it('returns low ratio when iris is toward inner corner (looking right)', () => {
+  it('returns low canonical ratio for physical gaze right', () => {
     const landmarks = createLandmarksWithGaze(0.2, 0.5);
     const result = estimator.estimate(landmarks);
 
