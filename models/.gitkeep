@@ -1,0 +1,8 @@
+# Models Directory
+
+Place MediaPipe model files here.
+
+Run `npm run download-models` to download them automatically.
+
+Required:
+- face_landmarker.task (~5MB)

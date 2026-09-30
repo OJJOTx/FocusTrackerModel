@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Attention Monitoring Engine Demo</title>
+    <link rel="stylesheet" href="styles.css">
+    <script type="importmap">
+    {
+      "imports": {
+        "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/vision_bundle.mjs"
+      }
+    }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>FocusTracker Demo</h1>
+            <div class="controls">
+                <button id="startBtn" class="btn" disabled>Start</button>
+                <button id="stopBtn" class="btn" disabled>Stop</button>
+                <button id="calibrateBtn" class="btn" disabled>Calibrate</button>
+                <button id="debugToggleBtn" class="btn">Toggle Debug</button>
+            </div>
+        </header>
+
+        <main>
+            <div class="video-container">
+                <video id="webcam" autoplay playsinline></video>
+                <canvas id="overlay"></canvas>
+            </div>
+
+            <div class="dashboard">
+                <div class="card state-card">
+                    <h2>Current State</h2>
+                    <div id="currentState" class="state-text">INITIALIZING</div>
+                </div>
+
+                <div class="card score-card">
+                    <h2>Attention Score</h2>
+                    <div class="progress-bar-container">
+                        <div id="scoreBar" class="progress-bar"></div>
+                    </div>
+                    <div id="scoreText" class="score-text">0%</div>
+                </div>
+
+                <div class="card stats-card">
+                    <h2>Metrics</h2>
+                    <div class="metric">
+                        <span class="label">Gaze Direction:</span>
+                        <span id="gazeDir" class="value">N/A</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Head Pose (Y, P, R):</span>
+                        <span id="headPose" class="value">N/A</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Eye State:</span>
+                        <span id="eyeState" class="value">N/A</span>
+                    </div>
+                </div>
+
+                <div class="card timing-card">
+                    <h2>Timing Info</h2>
+                    <div class="metric">
+                        <span class="label">Focused Duration:</span>
+                        <span id="focusedTime" class="value">0s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Looking Away:</span>
+                        <span id="lookingAwayTime" class="value">0s</span>
+                    </div>
+                    <div class="metric">
+                        <span class="label">Absent:</span>
+                        <span id="absentTime" class="value">0s</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="renderer.js"></script>
+</body>
+</html>
