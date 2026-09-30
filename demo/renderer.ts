@@ -145,6 +145,7 @@ async function init() {
       debug: true,
       processingFps: 20,
       outputIntervalMs: 200,
+      modelPath: '../models/face_landmarker.task', // relative to demo/index.html
     });
 
     await monitor.init();
