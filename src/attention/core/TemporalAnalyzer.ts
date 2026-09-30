@@ -91,7 +91,16 @@ export class TemporalAnalyzer {
       return;
     }
 
-    // A face has returned after a period of loss. Do not instantly clear absence:
+    const absenceDuration = now - this.absentStartMs;
+    if (absenceDuration < this.config.absentGraceMs) {
+      // Ignore tiny detector dropouts without forcing a long reacquisition hold.
+      this.absentStartMs = null;
+      this.faceReacquiredStartMs = null;
+      this.wasAbsent = false;
+      return;
+    }
+
+    // A face has returned after a meaningful loss. Do not instantly clear absence:
     // require continuous detection for a short reacquisition period.
     if (this.faceReacquiredStartMs === null) {
       this.faceReacquiredStartMs = now;
