@@ -114,7 +114,8 @@ function drawDebugOverlay() {
       const radYaw = (yaw * Math.PI) / 180;
       const radPitch = (pitch * Math.PI) / 180;
 
-      const endX = cx + Math.sin(radYaw) * len;
+      // Negate the X offset because the video feed is horizontally mirrored in CSS
+      const endX = cx - Math.sin(radYaw) * len;
       const endY = cy + Math.sin(radPitch) * len;
 
       ctx.strokeStyle = '#ff0000';
@@ -197,13 +198,34 @@ async function init() {
   }
 }
 
+async function setupCamera() {
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { width: 1280, height: 720, facingMode: 'user' },
+    audio: false
+  });
+  video.srcObject = stream;
+  return new Promise<void>((resolve) => {
+    video.onloadedmetadata = () => {
+      resolve();
+    };
+  });
+}
+
 // --- Button handlers ---
 
 startBtn.addEventListener('click', async () => {
   if (!monitor) return;
 
   try {
+    // 1. Setup the DOM video element to show the camera feed
+    await setupCamera();
+    
+    // 2. Tell the monitor to use this existing video element
+    monitor.attachVideoElement(video);
+    
+    // 3. Start processing
     await monitor.start();
+    
     isRunning = true;
     startBtn.disabled = true;
     stopBtn.disabled = false;
