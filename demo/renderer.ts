@@ -40,6 +40,7 @@ let debugMode = true;
 let isRunning = false;
 let animFrameId = 0;
 let latestResult: AttentionResult | null = null;
+let isCalibrating = false;
 
 // --- State display helpers ---
 
@@ -160,7 +161,9 @@ async function init() {
     monitor.on('update', (result: AttentionResult) => {
       latestResult = result;
 
-      updateStateDisplay(result.state);
+      if (!isCalibrating) {
+        updateStateDisplay(result.state);
+      }
       updateScoreBar(result.attentionScore);
       gazeDirEl.innerText = result.gaze.direction.toUpperCase();
       headPoseEl.innerText = `Y: ${result.headPose.yaw}°  P: ${result.headPose.pitch}°  R: ${result.headPose.roll}°`;
@@ -172,6 +175,24 @@ async function init() {
       focusedTimeEl.innerText = formatDuration(result.timing.focusedMs);
       lookingAwayTimeEl.innerText = formatDuration(result.timing.lookingAwayMs);
       absentTimeEl.innerText = formatDuration(result.timing.absentMs);
+    });
+
+    monitor.on('calibration', (event) => {
+      if (event.step === 'complete') {
+        isCalibrating = false;
+        calibrateBtn.disabled = false;
+        calibrateBtn.innerText = 'Calibrated ✓';
+        currentStateEl.innerText = 'CALIBRATION COMPLETE';
+        currentStateEl.style.color = '#4caf50';
+        return;
+      }
+
+      isCalibrating = true;
+      calibrateBtn.disabled = true;
+      calibrateBtn.innerText = `Calibrating ${Math.round(event.progress * 100)}%`;
+      currentStateEl.innerText =
+        `${event.step.toUpperCase()}: ${event.instruction} (${Math.round(event.progress * 100)}%)`;
+      currentStateEl.style.color = '#42a5f5';
     });
 
     monitor.on('stateChange', (event) => {
@@ -251,6 +272,8 @@ stopBtn.addEventListener('click', () => {
   startBtn.disabled = false;
   stopBtn.disabled = true;
   calibrateBtn.disabled = true;
+  calibrateBtn.innerText = 'Calibrate';
+  isCalibrating = false;
   cancelAnimationFrame(animFrameId);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   currentStateEl.innerText = 'STOPPED';
@@ -258,13 +281,22 @@ stopBtn.addEventListener('click', () => {
 });
 
 calibrateBtn.addEventListener('click', async () => {
-  if (!monitor || !isRunning) return;
+  if (!monitor || !isRunning || isCalibrating) return;
+
   try {
-    currentStateEl.innerText = 'CALIBRATING...';
+    isCalibrating = true;
+    calibrateBtn.disabled = true;
+    calibrateBtn.innerText = 'Starting calibration...';
     await monitor.calibrate();
+
     // eslint-disable-next-line no-console
-    console.log('Calibration complete');
+    console.log('Calibration complete:', monitor.getCalibrationData());
   } catch (err) {
+    isCalibrating = false;
+    calibrateBtn.disabled = false;
+    calibrateBtn.innerText = 'Calibrate';
+    currentStateEl.innerText = 'CALIBRATION FAILED';
+    currentStateEl.style.color = '#f44336';
     // eslint-disable-next-line no-console
     console.error('Calibration failed:', err);
   }
