@@ -1,14 +1,9 @@
 /**
  * Eye State Estimator
  *
- * Estimates whether each eye is open or closed using the Eye Aspect Ratio (EAR).
- *
- * EAR formula: (||p2-p6|| + ||p3-p5||) / (2.0 * ||p1-p4||)
- * where p1-p6 are the 6 eye boundary landmarks.
- *
- * Uses hysteresis to avoid flickering between open and closed states:
- * - Transition to closed when EAR drops below eyeClosedThreshold
- * - Transition to open when EAR rises above eyeOpenThreshold
+ * Estimates whether each eye is open or closed using Eye Aspect Ratio (EAR).
+ * Adds per-eye geometry confidence so partially occluded eyes do not remain
+ * "100% confident" merely because MediaPipe returned landmarks.
  */
 
 import { EyeStateFeatures, FaceLandmark } from '../types/AttentionFeatures';
@@ -27,57 +22,53 @@ export class EyeStateEstimator {
 
   constructor(config: ResolvedAttentionConfig) {
     this.config = config;
-    // Moderate smoothing for EAR
     this.leftEarEMA = new ExponentialMovingAverage(0.5);
     this.rightEarEMA = new ExponentialMovingAverage(0.5);
   }
 
-  /**
-   * Estimate eye state from face landmarks.
-   *
-   * @param landmarks - 478 MediaPipe face landmarks (normalized 0-1)
-   * @returns Eye state features with EAR values and open/closed classification
-   */
   estimate(landmarks: FaceLandmark[]): EyeStateFeatures {
     if (!landmarks || landmarks.length < 388) {
-      return {
-        leftEAR: 0,
-        rightEAR: 0,
-        averageEAR: 0,
-        leftOpen: false,
-        rightOpen: false,
-        confidence: 0,
-      };
+      return this.emptyResult();
     }
 
-    // Calculate raw EAR for each eye
     const rawLeftEAR = this.calculateEAR(landmarks, EAR_LANDMARKS.left);
     const rawRightEAR = this.calculateEAR(landmarks, EAR_LANDMARKS.right);
 
-    // Apply EMA smoothing
     const leftEAR = this.leftEarEMA.update(rawLeftEAR);
     const rightEAR = this.rightEarEMA.update(rawRightEAR);
-    const averageEAR = (leftEAR + rightEAR) / 2.0;
+    const averageEAR = (leftEAR + rightEAR) / 2;
 
-    // Hysteresis-based open/closed detection
+    const leftConfidence = this.computeEyeConfidence(leftEAR);
+    const rightConfidence = this.computeEyeConfidence(rightEAR);
+
+    // A large inter-eye disagreement is often a sign of partial occlusion,
+    // glare, a hand over one eye, or unstable landmarks.
+    const earDifference = Math.abs(leftEAR - rightEAR);
+    const symmetryPenalty = Math.max(0.15, 1 - earDifference / 0.18);
+    const confidence =
+      Math.min(leftConfidence, rightConfidence) * symmetryPenalty;
+
     const closedThreshold = this.config.eyeClosedThreshold;
     const openThreshold = this.config.eyeOpenThreshold;
 
     let leftOpen = this.wasLeftOpen;
-    if (this.wasLeftOpen && leftEAR < closedThreshold) {
+    if (leftConfidence < 0.25) {
+      leftOpen = this.wasLeftOpen;
+    } else if (this.wasLeftOpen && leftEAR < closedThreshold) {
       leftOpen = false;
     } else if (!this.wasLeftOpen && leftEAR > openThreshold) {
       leftOpen = true;
     }
 
     let rightOpen = this.wasRightOpen;
-    if (this.wasRightOpen && rightEAR < closedThreshold) {
+    if (rightConfidence < 0.25) {
+      rightOpen = this.wasRightOpen;
+    } else if (this.wasRightOpen && rightEAR < closedThreshold) {
       rightOpen = false;
     } else if (!this.wasRightOpen && rightEAR > openThreshold) {
       rightOpen = true;
     }
 
-    // Update state history
     this.wasLeftOpen = leftOpen;
     this.wasRightOpen = rightOpen;
 
@@ -87,13 +78,12 @@ export class EyeStateEstimator {
       averageEAR,
       leftOpen,
       rightOpen,
-      confidence: 1.0,
+      leftConfidence,
+      rightConfidence,
+      confidence: Math.max(0, Math.min(1, confidence)),
     };
   }
 
-  /**
-   * Reset smoothing and state tracking.
-   */
   reset(): void {
     this.leftEarEMA.reset();
     this.rightEarEMA.reset();
@@ -101,14 +91,15 @@ export class EyeStateEstimator {
     this.wasRightOpen = true;
   }
 
-  /**
-   * Calculate Eye Aspect Ratio from 6 landmark points.
-   *
-   * p1=outer corner, p2=upper-outer, p3=upper-inner,
-   * p4=inner corner, p5=lower-inner, p6=lower-outer
-   *
-   * EAR = (||p2-p6|| + ||p3-p5||) / (2.0 * ||p1-p4||)
-   */
+  private computeEyeConfidence(ear: number): number {
+    if (!Number.isFinite(ear) || ear <= 0 || ear > 0.65) return 0.05;
+
+    // Typical webcam EAR values sit roughly in 0.08-0.45.
+    if (ear < 0.04 || ear > 0.5) return 0.2;
+    if (ear < 0.07 || ear > 0.45) return 0.55;
+    return 1;
+  }
+
   private calculateEAR(landmarks: FaceLandmark[], indices: number[]): number {
     if (indices.length !== 6) return 0;
 
@@ -126,7 +117,19 @@ export class EyeStateEstimator {
     const h = distance2D(p1, p4);
 
     if (h === 0) return 0;
+    return (v1 + v2) / (2 * h);
+  }
 
-    return (v1 + v2) / (2.0 * h);
+  private emptyResult(): EyeStateFeatures {
+    return {
+      leftEAR: 0,
+      rightEAR: 0,
+      averageEAR: 0,
+      leftOpen: false,
+      rightOpen: false,
+      leftConfidence: 0,
+      rightConfidence: 0,
+      confidence: 0,
+    };
   }
 }
