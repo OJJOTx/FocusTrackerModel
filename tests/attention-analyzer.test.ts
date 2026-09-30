@@ -18,6 +18,9 @@ function createFocusedTemporal(): TemporalState {
     wasLookingAway: false,
     wasAbsent: false,
     wereEyesClosed: false,
+    stableDirection: 'center',
+    lookingAwayRatio: 0,
+    faceReacquiring: false,
     lastState: 'focused',
     lastStateChangeTimestamp: 0,
   };
