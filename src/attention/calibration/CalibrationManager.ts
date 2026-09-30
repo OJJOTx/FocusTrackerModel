@@ -26,8 +26,8 @@ const STEP_INSTRUCTIONS: Record<CalibrationStep, string> = {
 /** All calibration steps in order */
 const CALIBRATION_STEPS: CalibrationStep[] = ['center', 'left', 'right', 'up', 'down'];
 
-/** How many samples to collect per step */
-const SAMPLES_PER_STEP = 30;
+/** How many output samples to collect per step (~2s at the default 5 updates/sec) */
+const SAMPLES_PER_STEP = 10;
 
 export class CalibrationManager {
   private calibrationData: CalibrationData;
@@ -120,6 +120,7 @@ export class CalibrationManager {
     }
 
     const step = CALIBRATION_STEPS[this.currentStepIndex];
+    this.onProgress?.(step, 0, STEP_INSTRUCTIONS[step]);
     return {
       step,
       instruction: STEP_INSTRUCTIONS[step],
