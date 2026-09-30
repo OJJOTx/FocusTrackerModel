@@ -34,6 +34,7 @@ function createMainWindow(): void {
   mainWindow.loadFile(path.join(__dirname, '../../demo/index.html'));
   mainWindow.on('closed', () => {
     mainWindow = null;
+    octopusWindow?.close();
   });
 }
 
