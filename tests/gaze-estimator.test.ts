@@ -119,6 +119,26 @@ describe('GazeEstimator', () => {
     expect(r2.horizontalRatio).toBeLessThan(r1.horizontalRatio);
   });
 
+  it('uses all five calibration anchors for user-specific normalization', () => {
+    estimator.applyCalibration({
+      center: { horizontal: 0.55, vertical: 0.52 },
+      left: { horizontal: 0.75, vertical: 0.52 },
+      right: { horizontal: 0.35, vertical: 0.52 },
+      up: { horizontal: 0.55, vertical: 0.32 },
+      down: { horizontal: 0.55, vertical: 0.72 },
+      headPoseCenter: null,
+      isCalibrated: true,
+      calibratedAt: Date.now(),
+    });
+
+    const left = estimator.estimate(createLandmarksWithGaze(0.75, 0.52));
+    expect(left.horizontalRatio).toBeCloseTo(0.75, 1);
+
+    estimator.reset();
+    const up = estimator.estimate(createLandmarksWithGaze(0.55, 0.32));
+    expect(up.verticalRatio).toBeCloseTo(0.25, 1);
+  });
+
   it('resets smoothing state', () => {
     const center = createLandmarksWithGaze(0.5, 0.5);
     estimator.estimate(center);
