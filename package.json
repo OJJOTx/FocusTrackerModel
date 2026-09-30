@@ -6,7 +6,7 @@
   "types": "dist/attention/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
-    "build:demo": "tsc -p tsconfig.json && esbuild demo/renderer.ts --bundle --outfile=demo/renderer.bundle.js --platform=browser --format=esm --external:@mediapipe/tasks-vision",
+    "build:demo": "tsc -p tsconfig.json && esbuild demo/renderer.ts --bundle --outfile=demo/renderer.bundle.js --platform=browser --format=esm --external:@mediapipe/tasks-vision && esbuild demo/octopus-overlay.ts --bundle --outfile=demo/octopus-overlay.bundle.js --platform=browser --format=esm",
     "dev": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
     "test:watch": "vitest watch",
