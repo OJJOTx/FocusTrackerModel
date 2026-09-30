@@ -53,11 +53,34 @@ export class FaceDetector {
     if (result.faceLandmarks && result.faceLandmarks.length > 0) {
       // Return the primary (first) face landmarks
       const primaryLandmarks = result.faceLandmarks[0];
+
+      // FaceLandmarker does not expose a single per-face confidence here.
+      // Derive a conservative geometry-quality score instead of hardcoding 1.0.
+      const finiteCount = primaryLandmarks.reduce(
+        (count, lm) => count + (Number.isFinite(lm.x) && Number.isFinite(lm.y) && Number.isFinite(lm.z) ? 1 : 0),
+        0,
+      );
+      const finiteRatio = finiteCount / primaryLandmarks.length;
+
+      const xs = primaryLandmarks.map((lm) => lm.x);
+      const ys = primaryLandmarks.map((lm) => lm.y);
+      const faceWidth = Math.max(...xs) - Math.min(...xs);
+      const faceHeight = Math.max(...ys) - Math.min(...ys);
+      const sizeScore = Math.min(1, Math.min(faceWidth / 0.18, faceHeight / 0.22));
+      const boundsRatio =
+        primaryLandmarks.filter((lm) => lm.x >= -0.05 && lm.x <= 1.05 && lm.y >= -0.05 && lm.y <= 1.05)
+          .length / primaryLandmarks.length;
+
+      const confidence = Math.max(
+        0,
+        Math.min(0.95, finiteRatio * 0.45 + boundsRatio * 0.25 + sizeScore * 0.25),
+      );
+
       return {
         detected: true,
         faceCount: result.faceLandmarks.length,
         landmarks: primaryLandmarks,
-        confidence: 1.0, // Defaulting to 1.0 as confidence per landmark isn't directly exposed here
+        confidence,
         frameWidth: videoElement.videoWidth,
         frameHeight: videoElement.videoHeight
       };
