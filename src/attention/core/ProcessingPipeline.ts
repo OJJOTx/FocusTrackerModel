@@ -151,8 +151,20 @@ export class ProcessingPipeline {
       const fh = faceResult.frameHeight;
 
       const headPose = this.headPoseEstimator.estimate(landmarks, fw, fh);
-      const gaze = this.gazeEstimator.estimate(landmarks);
       const eyeState = this.eyeStateEstimator.estimate(landmarks);
+      const rawGaze = this.gazeEstimator.estimate(landmarks);
+
+      // Do not trust binocular iris direction when exactly one eye is closed
+      // or either eye geometry is low-quality. This prevents a wink/occlusion
+      // from turning into false LOOKING_UP / LOOKING_AWAY events.
+      const gazeUnreliable =
+        eyeState.leftOpen !== eyeState.rightOpen ||
+        eyeState.leftConfidence < 0.35 ||
+        eyeState.rightConfidence < 0.35;
+
+      const gaze = gazeUnreliable
+        ? { ...rawGaze, confidence: 0 }
+        : rawGaze;
 
       features = {
         timestamp,
