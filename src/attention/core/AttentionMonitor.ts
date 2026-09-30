@@ -220,7 +220,14 @@ export class AttentionMonitor {
 
       this.gazeEstimator.clearCalibration();
       this.headPoseEstimator.setNeutralPose(null);
-      this.calibrationManager.startCalibration();
+
+      const firstStep = this.calibrationManager.startCalibration();
+      // Emit immediately so UIs can show instructions before the first sample arrives.
+      this.emit('calibration', {
+        step: firstStep.step,
+        progress: 0,
+        instruction: firstStep.instruction,
+      });
     });
   }
 
