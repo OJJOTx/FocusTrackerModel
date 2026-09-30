@@ -78,7 +78,10 @@ export class HeadPoseEstimator {
 
     // Apply EMA smoothing to reduce jitter
     const rawYaw = this.yawEMA.update(pose.yaw);
-    const rawPitch = this.pitchEMA.update(pose.pitch);
+    // MediaPipe image coordinates increase downward, while the public API uses
+    // negative = looking up and positive = looking down. The geometric solver's
+    // pitch axis is inverted relative to that convention on real webcam input.
+    const rawPitch = this.pitchEMA.update(-pose.pitch);
     const rawRoll = this.rollEMA.update(pose.roll);
 
     // Express pose relative to the user's calibrated screen-facing baseline.
