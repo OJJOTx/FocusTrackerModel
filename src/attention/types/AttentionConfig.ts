@@ -66,13 +66,13 @@ export interface AttentionConfig {
 
   // --- Head pose thresholds ---
 
-  /** Yaw angle threshold (degrees) for 'looking left/right' (default: 35) */
+  /** Yaw angle threshold (degrees) for 'looking left/right' (default: 20) */
   headYawThreshold?: number;
 
-  /** Pitch angle threshold (degrees) for 'looking up/down' (default: 35) */
+  /** Pitch angle threshold (degrees) for 'looking up/down' (default: 15) */
   headPitchThreshold?: number;
 
-  /** Maximum yaw/pitch for 'facing screen' classification (default: 40) */
+  /** Maximum yaw/pitch for 'facing screen' classification (default: 25) */
   facingScreenThreshold?: number;
 
   // --- Eye thresholds ---
@@ -206,9 +206,9 @@ export const DEFAULT_CONFIG: ResolvedAttentionConfig = {
   lookingAwayGraceMs: 500,
   absentGraceMs: 1000,
 
-  headYawThreshold: 35,
-  headPitchThreshold: 35,
-  facingScreenThreshold: 40,
+  headYawThreshold: 20,
+  headPitchThreshold: 15,
+  facingScreenThreshold: 25,
 
   eyeClosedThreshold: 0.20,
   eyeOpenThreshold: 0.25,

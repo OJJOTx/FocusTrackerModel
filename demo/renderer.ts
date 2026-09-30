@@ -29,6 +29,11 @@ const focusedTimeEl = document.getElementById('focusedTime') as HTMLElement;
 const lookingAwayTimeEl = document.getElementById('lookingAwayTime') as HTMLElement;
 const absentTimeEl = document.getElementById('absentTime') as HTMLElement;
 
+const pitchSlider = document.getElementById('pitchSlider') as HTMLInputElement;
+const yawSlider = document.getElementById('yawSlider') as HTMLInputElement;
+const pitchValEl = document.getElementById('pitchVal') as HTMLElement;
+const yawValEl = document.getElementById('yawVal') as HTMLElement;
+
 // State
 let monitor: AttentionMonitor | null = null;
 let debugMode = true;
@@ -270,6 +275,24 @@ debugToggleBtn.addEventListener('click', () => {
   debugToggleBtn.innerText = debugMode ? 'Debug: ON' : 'Debug: OFF';
   if (!debugMode) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+});
+
+// --- Slider handlers ---
+
+pitchSlider.addEventListener('input', (e) => {
+  const val = parseInt((e.target as HTMLInputElement).value, 10);
+  pitchValEl.innerText = `${val}°`;
+  if (monitor) {
+    monitor.updateConfig({ headPitchThreshold: val });
+  }
+});
+
+yawSlider.addEventListener('input', (e) => {
+  const val = parseInt((e.target as HTMLInputElement).value, 10);
+  yawValEl.innerText = `${val}°`;
+  if (monitor) {
+    monitor.updateConfig({ headYawThreshold: val });
   }
 });
 

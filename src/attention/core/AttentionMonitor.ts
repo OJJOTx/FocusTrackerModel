@@ -242,6 +242,18 @@ export class AttentionMonitor {
   }
 
   /**
+   * Update the configuration dynamically.
+   * Modifies the internal configuration object in place so components
+   * instantly see the new thresholds without restarting.
+   * 
+   * @param newConfig Partial configuration overrides.
+   */
+  updateConfig(newConfig: Partial<AttentionConfig>): void {
+    const resolved = resolveConfig({ ...(this.config as any), ...newConfig });
+    Object.assign(this.config, resolved);
+  }
+
+  /**
    * Get calibration data (for saving/restoring).
    */
   getCalibrationData() {

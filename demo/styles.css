@@ -180,3 +180,25 @@ main {
 .value {
     font-weight: bold;
 }
+
+.slider-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 15px;
+}
+
+.slider-group:last-child {
+    margin-bottom: 0;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+input[type="range"] {
+    width: 100%;
+    accent-color: var(--accent-color);
+    cursor: pointer;
+}

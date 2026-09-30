@@ -76,6 +76,24 @@
                         <span id="absentTime" class="value">0s</span>
                     </div>
                 </div>
+
+                <div class="card config-card">
+                    <h2>Configuration</h2>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span class="label">Pitch Threshold (Up/Down)</span>
+                            <span id="pitchVal" class="value">15°</span>
+                        </div>
+                        <input type="range" id="pitchSlider" min="5" max="50" value="15" step="1">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span class="label">Yaw Threshold (Left/Right)</span>
+                            <span id="yawVal" class="value">20°</span>
+                        </div>
+                        <input type="range" id="yawSlider" min="5" max="50" value="20" step="1">
+                    </div>
+                </div>
             </div>
         </main>
     </div>
