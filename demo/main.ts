@@ -28,6 +28,9 @@ function createMainWindow(): void {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
+      // The attention pipeline runs in the renderer. Keep timers/rAF and
+      // getUserMedia processing active when the demo window is minimized.
+      backgroundThrottling: false,
     },
   });
 
