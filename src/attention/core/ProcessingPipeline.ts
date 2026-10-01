@@ -28,6 +28,7 @@ export class ProcessingPipeline {
   private readonly attentionAnalyzer: AttentionAnalyzer;
 
   private animationFrameId: number | null = null;
+  private backgroundTimerId: number | null = null;
   private lastProcessingTimestamp = 0;
   private lastOutputTimestamp = 0;
   private isRunning = false;
@@ -67,6 +68,26 @@ export class ProcessingPipeline {
     this.isRunning = true;
     this.lastProcessingTimestamp = 0;
     this.lastOutputTimestamp = 0;
+    if (this.backgroundTimerId !== null) {
+      window.clearTimeout(this.backgroundTimerId);
+      this.backgroundTimerId = null;
+    }
+
+    const scheduleNext = (): void => {
+      if (!this.isRunning) return;
+
+      // requestAnimationFrame can stop entirely when an Electron window is
+      // minimized. Fall back to a timer while hidden so webcam analysis keeps
+      // feeding the always-on-top companion window.
+      if (typeof document !== 'undefined' && document.hidden) {
+        this.backgroundTimerId = window.setTimeout(
+          processFrame,
+          Math.max(16, 1000 / this.config.processingFps),
+        );
+      } else {
+        this.animationFrameId = requestAnimationFrame(processFrame);
+      }
+    };
 
     const processFrame = () => {
       if (!this.isRunning) return;
@@ -99,11 +120,11 @@ export class ProcessingPipeline {
         this.onError?.(error instanceof Error ? error : new Error(String(error)));
       }
 
-      // Continue loop
-      this.animationFrameId = requestAnimationFrame(processFrame);
+      // Continue loop using the foreground/background appropriate scheduler.
+      scheduleNext();
     };
 
-    this.animationFrameId = requestAnimationFrame(processFrame);
+    scheduleNext();
   }
 
   /**
@@ -114,6 +135,10 @@ export class ProcessingPipeline {
     if (this.animationFrameId !== null) {
       cancelAnimationFrame(this.animationFrameId);
       this.animationFrameId = null;
+    }
+    if (this.backgroundTimerId !== null) {
+      window.clearTimeout(this.backgroundTimerId);
+      this.backgroundTimerId = null;
     }
   }
 
@@ -151,8 +176,20 @@ export class ProcessingPipeline {
       const fh = faceResult.frameHeight;
 
       const headPose = this.headPoseEstimator.estimate(landmarks, fw, fh);
-      const gaze = this.gazeEstimator.estimate(landmarks);
       const eyeState = this.eyeStateEstimator.estimate(landmarks);
+      const rawGaze = this.gazeEstimator.estimate(landmarks);
+
+      // Do not trust binocular iris direction when exactly one eye is closed
+      // or either eye geometry is low-quality. This prevents a wink/occlusion
+      // from turning into false LOOKING_UP / LOOKING_AWAY events.
+      const gazeUnreliable =
+        eyeState.leftOpen !== eyeState.rightOpen ||
+        eyeState.leftConfidence < 0.35 ||
+        eyeState.rightConfidence < 0.35;
+
+      const gaze = gazeUnreliable
+        ? { ...rawGaze, confidence: 0 }
+        : rawGaze;
 
       features = {
         timestamp,

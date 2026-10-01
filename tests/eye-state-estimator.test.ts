@@ -96,6 +96,20 @@ describe('EyeStateEstimator', () => {
     expect(result.leftOpen).toBe(true);
   });
 
+  it('reduces confidence when the two eyes disagree strongly', () => {
+    const landmarks = createLandmarksWithEAR(0.32);
+
+    // Collapse only the left eye vertically to mimic a partial occlusion /
+    // unstable landmark fit while the right eye remains open.
+    landmarks[160].y = 0.495;
+    landmarks[158].y = 0.495;
+    landmarks[153].y = 0.505;
+    landmarks[144].y = 0.505;
+
+    const result = estimator.estimate(landmarks);
+    expect(result.confidence).toBeLessThan(0.8);
+  });
+
   it('returns zero confidence for empty landmarks', () => {
     const result = estimator.estimate([]);
     expect(result.confidence).toBe(0);

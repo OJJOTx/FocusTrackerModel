@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Focus Octopus</title>
+  <link rel="stylesheet" href="octopus-overlay.css">
+</head>
+<body data-state="uncertain" data-mood="neutral" data-edge="top">
+  <div id="octopusShell" class="octopus-shell" aria-label="Focus buddy">
+    <div class="octopus">
+      <div class="tentacles" aria-hidden="true">
+        <span class="tentacle t1"></span>
+        <span class="tentacle t2"></span>
+        <span class="tentacle t3"></span>
+        <span class="tentacle t4"></span>
+      </div>
+
+      <div class="head">
+        <span class="brow brow-left"></span>
+        <span class="brow brow-right"></span>
+
+        <span class="eye eye-left"><span class="pupil"></span></span>
+        <span class="eye eye-right"><span class="pupil"></span></span>
+
+        <span class="cheek cheek-left"></span>
+        <span class="cheek cheek-right"></span>
+        <span class="mouth"></span>
+      </div>
+    </div>
+
+    <div class="status-pill">
+      <span id="stateLabel">Watching</span>
+      <span id="scoreLabel">--%</span>
+    </div>
+  </div>
+
+  <script type="module" src="octopus-overlay.bundle.js"></script>
+</body>
+</html>

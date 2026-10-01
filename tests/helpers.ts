@@ -80,6 +80,8 @@ export function createMockEyeState(
     averageEAR: 0.3,
     leftOpen: true,
     rightOpen: true,
+    leftConfidence: 0.9,
+    rightConfidence: 0.9,
     confidence: 0.9,
     ...overrides,
   };

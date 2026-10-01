@@ -138,6 +138,13 @@ export class AttentionAnalyzer {
     const { horizontalRatio, verticalRatio } = features.gaze;
     const t = this.config.gazeThresholds;
 
+    if (
+      Math.abs(horizontalRatio - 0.5) <= t.centerDeadZone &&
+      Math.abs(verticalRatio - 0.5) <= t.centerDeadZone
+    ) {
+      return 'center';
+    }
+
     if (horizontalRatio > t.horizontalLeft) return 'left';
     if (horizontalRatio < t.horizontalRight) return 'right';
     if (verticalRatio < t.verticalUp) return 'up';

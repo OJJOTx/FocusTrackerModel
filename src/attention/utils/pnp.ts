@@ -77,11 +77,12 @@ export function solvePnP(
   // In a neutral face, this ratio is roughly constant
   const pitchRatio = eyeToNose / (noseToChin || 1);
   
-  // Heuristic conversion to degrees
-  // If ratio is large, looking up. If ratio is small, looking down.
-  // Assuming neutral ratio is around 0.7
+  // Heuristic conversion to degrees.
+  // Keep the public convention consistent across the project:
+  // negative pitch = looking up, positive pitch = looking down.
+  // A user-specific calibration offset is applied later by HeadPoseEstimator.
   const neutralRatio = 0.7;
-  let pitch = (pitchRatio - neutralRatio) * 100;
+  let pitch = (neutralRatio - pitchRatio) * 100;
   pitch = Math.max(-90, Math.min(90, pitch));
 
   return { yaw, pitch, roll };

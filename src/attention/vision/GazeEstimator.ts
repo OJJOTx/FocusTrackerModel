@@ -1,15 +1,10 @@
 /**
  * Gaze Estimator
  *
- * Estimates gaze direction based on geometric iris analysis.
- * Uses iris center position relative to eye corners to determine
- * where the user is looking.
- *
- * Horizontal ratio: (iris.x - innerCorner.x) / (outerCorner.x - innerCorner.x)
- *   ~0.5 = center, >0.6 = looking toward outer (left for left eye), <0.4 = looking toward inner
- *
- * Vertical ratio: (iris.y - upperLid.y) / (lowerLid.y - upperLid.y)
- *   ~0.5 = center, <0.35 = looking up, >0.65 = looking down
+ * Estimates directional gaze from MediaPipe iris landmarks.
+ * Horizontal ratios from the two eyes are canonicalized to the same image-space
+ * direction before averaging. Optional 5-point calibration maps each user's
+ * natural extrema into a normalized coordinate system.
  */
 
 import { GazeFeatures, FaceLandmark, CalibrationData } from '../types/AttentionFeatures';
@@ -23,37 +18,27 @@ export class GazeEstimator {
   private calibrationData: CalibrationData | null = null;
 
   constructor(_config: ResolvedAttentionConfig) {
-    // Use a moderate smoothing factor for gaze (less smoothing = more responsive)
     this.horizontalEMA = new ExponentialMovingAverage(0.5);
     this.verticalEMA = new ExponentialMovingAverage(0.5);
   }
 
-  /**
-   * Estimate gaze features from face landmarks.
-   *
-   * @param landmarks - 478 MediaPipe face landmarks (normalized 0-1)
-   * @returns Gaze features with iris ratios and confidence
-   */
   estimate(landmarks: FaceLandmark[]): GazeFeatures {
     if (!landmarks || landmarks.length < 478) {
       return this.emptyResult();
     }
 
-    // Left eye landmarks
     const leftIris = landmarks[FACE_LANDMARKS.leftIrisCenter];
     const leftInner = landmarks[FACE_LANDMARKS.leftEyeInnerCorner];
     const leftOuter = landmarks[FACE_LANDMARKS.leftEyeOuterCorner];
     const leftUpper = landmarks[FACE_LANDMARKS.leftEyeUpper];
     const leftLower = landmarks[FACE_LANDMARKS.leftEyeLower];
 
-    // Right eye landmarks
     const rightIris = landmarks[FACE_LANDMARKS.rightIrisCenter];
     const rightInner = landmarks[FACE_LANDMARKS.rightEyeInnerCorner];
     const rightOuter = landmarks[FACE_LANDMARKS.rightEyeOuterCorner];
     const rightUpper = landmarks[FACE_LANDMARKS.rightEyeUpper];
     const rightLower = landmarks[FACE_LANDMARKS.rightEyeLower];
 
-    // Validate all landmarks exist
     if (
       !leftIris || !leftInner || !leftOuter || !leftUpper || !leftLower ||
       !rightIris || !rightInner || !rightOuter || !rightUpper || !rightLower
@@ -61,55 +46,62 @@ export class GazeEstimator {
       return this.emptyResult();
     }
 
-    // Compute horizontal ratios
-    let horizontalRatioLeft = 0.5;
-    let horizontalRatioRight = 0.5;
-
     const leftEyeWidth = leftOuter.x - leftInner.x;
-    if (Math.abs(leftEyeWidth) > 0.001) {
-      horizontalRatioLeft = (leftIris.x - leftInner.x) / leftEyeWidth;
-    }
-
     const rightEyeWidth = rightOuter.x - rightInner.x;
-    if (Math.abs(rightEyeWidth) > 0.001) {
-      horizontalRatioRight = (rightIris.x - rightInner.x) / rightEyeWidth;
-    }
-
-    // Compute vertical ratios
-    let verticalRatioLeft = 0.5;
-    let verticalRatioRight = 0.5;
-
     const leftEyeHeight = leftLower.y - leftUpper.y;
-    if (Math.abs(leftEyeHeight) > 0.001) {
-      verticalRatioLeft = (leftIris.y - leftUpper.y) / leftEyeHeight;
-    }
-
     const rightEyeHeight = rightLower.y - rightUpper.y;
-    if (Math.abs(rightEyeHeight) > 0.001) {
-      verticalRatioRight = (rightIris.y - rightUpper.y) / rightEyeHeight;
+
+    if (
+      Math.abs(leftEyeWidth) < 0.001 ||
+      Math.abs(rightEyeWidth) < 0.001 ||
+      Math.abs(leftEyeHeight) < 0.001 ||
+      Math.abs(rightEyeHeight) < 0.001
+    ) {
+      return this.emptyResult();
     }
 
-    // Average both eyes
-    let avgHorizontal = (horizontalRatioLeft + horizontalRatioRight) / 2.0;
-    let avgVertical = (verticalRatioLeft + verticalRatioRight) / 2.0;
+    const horizontalRatioLeft = (leftIris.x - leftInner.x) / leftEyeWidth;
+    const horizontalRatioRight = (rightIris.x - rightInner.x) / rightEyeWidth;
+    const verticalRatioLeft = (leftIris.y - leftUpper.y) / leftEyeHeight;
+    const verticalRatioRight = (rightIris.y - rightUpper.y) / rightEyeHeight;
 
-    // Apply calibration offset if available
+    // The two eyes have opposite inner->outer X axes. Canonicalize right eye
+    // before combining so physical gaze does not cancel itself out.
+    const canonicalLeft = horizontalRatioLeft;
+    const canonicalRight = 1 - horizontalRatioRight;
+
+    let avgHorizontal = (canonicalLeft + canonicalRight) / 2;
+    let avgVertical = (verticalRatioLeft + verticalRatioRight) / 2;
+
+    // Confidence falls when the two eyes disagree strongly, ratios are implausible,
+    // or eye geometry is too compressed to trust.
+    const horizontalDisagreement = Math.abs(canonicalLeft - canonicalRight);
+    const verticalDisagreement = Math.abs(verticalRatioLeft - verticalRatioRight);
+    const plausibility = [
+      horizontalRatioLeft,
+      horizontalRatioRight,
+      verticalRatioLeft,
+      verticalRatioRight,
+    ].every((v) => Number.isFinite(v) && v > -0.25 && v < 1.25);
+
+    let confidence = plausibility ? 1 : 0.15;
+    confidence *= Math.max(0.1, 1 - horizontalDisagreement / 0.35);
+    confidence *= Math.max(0.1, 1 - verticalDisagreement / 0.45);
+
+    // Very narrow visible eye aperture makes iris direction unreliable.
+    const leftAperture = Math.abs(leftEyeHeight / leftEyeWidth);
+    const rightAperture = Math.abs(rightEyeHeight / rightEyeWidth);
+    if (leftAperture < 0.12 || rightAperture < 0.12) {
+      confidence *= 0.25;
+    }
+
     if (this.calibrationData?.isCalibrated && this.calibrationData.center) {
-      const hOffset = 0.5 - this.calibrationData.center.horizontal;
-      const vOffset = 0.5 - this.calibrationData.center.vertical;
-      avgHorizontal += hOffset;
-      avgVertical += vOffset;
+      avgHorizontal = this.applyHorizontalCalibration(avgHorizontal, this.calibrationData);
+      avgVertical = this.applyVerticalCalibration(avgVertical, this.calibrationData);
     }
 
-    // Apply EMA smoothing
     const horizontalRatio = this.horizontalEMA.update(avgHorizontal);
     const verticalRatio = this.verticalEMA.update(avgVertical);
-
-    // Confidence: drops when eyes appear closed (upper lid below lower lid)
-    let confidence = 1.0;
-    if (leftUpper.y >= leftLower.y || rightUpper.y >= rightLower.y) {
-      confidence = 0.1; // Eyes likely closed — gaze is unreliable
-    }
 
     return {
       horizontalRatioLeft,
@@ -118,23 +110,65 @@ export class GazeEstimator {
       verticalRatioRight,
       horizontalRatio,
       verticalRatio,
-      confidence,
+      confidence: Math.max(0, Math.min(1, confidence)),
     };
   }
 
-  /**
-   * Apply calibration data to adjust gaze estimation.
-   */
   applyCalibration(data: CalibrationData): void {
     this.calibrationData = data;
+    this.horizontalEMA.reset();
+    this.verticalEMA.reset();
   }
 
-  /**
-   * Reset smoothing state.
-   */
+  clearCalibration(): void {
+    this.calibrationData = null;
+    this.horizontalEMA.reset();
+    this.verticalEMA.reset();
+  }
+
   reset(): void {
     this.horizontalEMA.reset();
     this.verticalEMA.reset();
+  }
+
+  private applyHorizontalCalibration(value: number, data: CalibrationData): number {
+    const center = data.center?.horizontal;
+    if (center == null) return value;
+
+    const left = data.left?.horizontal;
+    const right = data.right?.horizontal;
+
+    if (value >= center && left != null && Math.abs(left - center) > 0.02) {
+      return this.clamp(0.5 + ((value - center) / (left - center)) * 0.25, 0, 1);
+    }
+
+    if (value < center && right != null && Math.abs(center - right) > 0.02) {
+      return this.clamp(0.5 - ((center - value) / (center - right)) * 0.25, 0, 1);
+    }
+
+    return this.clamp(value + (0.5 - center), 0, 1);
+  }
+
+  private applyVerticalCalibration(value: number, data: CalibrationData): number {
+    const center = data.center?.vertical;
+    if (center == null) return value;
+
+    const up = data.up?.vertical;
+    const down = data.down?.vertical;
+
+    if (value < center && up != null && Math.abs(center - up) > 0.02) {
+      return this.clamp(0.5 - ((center - value) / (center - up)) * 0.25, 0, 1);
+    }
+
+    if (value >= center && down != null && Math.abs(down - center) > 0.02) {
+      return this.clamp(0.5 + ((value - center) / (down - center)) * 0.25, 0, 1);
+    }
+
+    return this.clamp(value + (0.5 - center), 0, 1);
+  }
+
+  private clamp(value: number, min: number, max: number): number {
+    return Math.max(min, Math.min(max, value));
   }
 
   private emptyResult(): GazeFeatures {

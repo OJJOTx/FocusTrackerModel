@@ -207,6 +207,9 @@ const monitor = new AttentionMonitor({
   prolongedEyeClosureMs: 1200,    // Duration before "eyes_closed" state
   lookingAwayGraceMs: 500,        // Brief glances ignored
   absentGraceMs: 1000,            // Brief detection failures ignored
+  faceReacquisitionMs: 700,        // Stable face time before leaving absent
+  lookingAwayEnterRatio: 0.65,     // Rolling-window hysteresis enter threshold
+  lookingAwayExitRatio: 0.35,      // Rolling-window hysteresis exit threshold
 
   // Head pose thresholds (degrees)
   headYawThreshold: 20,           // Yaw beyond this = looking left/right
@@ -268,7 +271,7 @@ Weights are configurable via `scoreWeights` and must sum to 1.0.
 
 ## Calibration
 
-Optional 5-point calibration improves gaze accuracy for individual users:
+Optional 5-point calibration improves gaze accuracy for individual users. The center step also captures a neutral head-pose baseline so normal laptop/camera angle is treated as screen-facing:
 
 ```typescript
 // Programmatic calibration

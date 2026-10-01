@@ -26,11 +26,11 @@ export interface GazeThresholds {
   horizontalLeft: number;
   /** Horizontal ratio threshold for 'right' classification (default: 0.40) */
   horizontalRight: number;
-  /** Vertical ratio threshold for 'up' classification (default: 0.35) */
+  /** Vertical ratio threshold for 'up' classification (default: 0.28) */
   verticalUp: number;
-  /** Vertical ratio threshold for 'down' classification (default: 0.65) */
+  /** Vertical ratio threshold for 'down' classification (default: 0.72) */
   verticalDown: number;
-  /** Dead zone around center where gaze is considered 'center' (default: 0.08) */
+  /** Dead zone around center where gaze is considered 'center' (default: 0.10) */
   centerDeadZone: number;
 }
 
@@ -64,12 +64,21 @@ export interface AttentionConfig {
   /** Duration in ms below which face absence is treated as detection failure (default: 1000) */
   absentGraceMs?: number;
 
+  /** Continuous visible-face time required before leaving an absent/reacquiring state (default: 700) */
+  faceReacquisitionMs?: number;
+
+  /** Fraction of recent known samples required to enter looking-away state (default: 0.65) */
+  lookingAwayEnterRatio?: number;
+
+  /** Fraction below which the looking-away state can exit (default: 0.35) */
+  lookingAwayExitRatio?: number;
+
   // --- Head pose thresholds ---
 
   /** Yaw angle threshold (degrees) for 'looking left/right' (default: 20) */
   headYawThreshold?: number;
 
-  /** Pitch angle threshold (degrees) for 'looking up/down' (default: 15) */
+  /** Pitch angle threshold (degrees) for 'looking up/down' (default: 30) */
   headPitchThreshold?: number;
 
   /** Maximum yaw/pitch for 'facing screen' classification (default: 25) */
@@ -164,6 +173,9 @@ export interface ResolvedAttentionConfig {
   prolongedEyeClosureMs: number;
   lookingAwayGraceMs: number;
   absentGraceMs: number;
+  faceReacquisitionMs: number;
+  lookingAwayEnterRatio: number;
+  lookingAwayExitRatio: number;
 
   headYawThreshold: number;
   headPitchThreshold: number;
@@ -205,9 +217,12 @@ export const DEFAULT_CONFIG: ResolvedAttentionConfig = {
   prolongedEyeClosureMs: 1200,
   lookingAwayGraceMs: 500,
   absentGraceMs: 1000,
+  faceReacquisitionMs: 700,
+  lookingAwayEnterRatio: 0.65,
+  lookingAwayExitRatio: 0.35,
 
   headYawThreshold: 20,
-  headPitchThreshold: 15,
+  headPitchThreshold: 30,
   facingScreenThreshold: 25,
 
   eyeClosedThreshold: 0.20,
@@ -216,9 +231,9 @@ export const DEFAULT_CONFIG: ResolvedAttentionConfig = {
   gazeThresholds: {
     horizontalLeft: 0.60,
     horizontalRight: 0.40,
-    verticalUp: 0.35,
-    verticalDown: 0.65,
-    centerDeadZone: 0.08,
+    verticalUp: 0.28,
+    verticalDown: 0.72,
+    centerDeadZone: 0.10,
   },
 
   scoreWeights: {
@@ -292,6 +307,12 @@ export function resolveConfig(userConfig?: AttentionConfig): ResolvedAttentionCo
       userConfig.prolongedEyeClosureMs ?? DEFAULT_CONFIG.prolongedEyeClosureMs,
     lookingAwayGraceMs: userConfig.lookingAwayGraceMs ?? DEFAULT_CONFIG.lookingAwayGraceMs,
     absentGraceMs: userConfig.absentGraceMs ?? DEFAULT_CONFIG.absentGraceMs,
+    faceReacquisitionMs:
+      userConfig.faceReacquisitionMs ?? DEFAULT_CONFIG.faceReacquisitionMs,
+    lookingAwayEnterRatio:
+      userConfig.lookingAwayEnterRatio ?? DEFAULT_CONFIG.lookingAwayEnterRatio,
+    lookingAwayExitRatio:
+      userConfig.lookingAwayExitRatio ?? DEFAULT_CONFIG.lookingAwayExitRatio,
 
     headYawThreshold: userConfig.headYawThreshold ?? DEFAULT_CONFIG.headYawThreshold,
     headPitchThreshold: userConfig.headPitchThreshold ?? DEFAULT_CONFIG.headPitchThreshold,
